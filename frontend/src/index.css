@@ -1,0 +1,123 @@
+@import 'tailwindcss';
+
+/* Design tokens from the Stitch "LangGraph Chatbot Web App" enterprise (light) screens. */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-canvas: #f8fafc;
+  --color-navy: #0f172a;
+  --color-navy-hover: #1e293b;
+  --color-ink: #0f172a;
+  --color-user: #1e293b;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-input: #cbd5e1;
+  --color-tag: #f1f5f9;
+
+  --color-mint-bg: #f0fdfa;
+  --color-mint-border: #ccfbf1;
+  --color-mint: #0d9488;
+
+  --color-crimson-50: #fef2f2;
+  --color-crimson-200: #fecaca;
+  --color-crimson-300: #fca5a5;
+  --color-crimson-600: #dc2626;
+  --color-crimson-700: #b91c1c;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  ::selection {
+    background: var(--color-line);
+  }
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+}
+
+/* Typography for assistant markdown replies, matching the design's response card. */
+.prose-chat {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.prose-chat > * + * {
+  margin-top: 0.75rem;
+}
+.prose-chat h1,
+.prose-chat h2,
+.prose-chat h3,
+.prose-chat h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 1.25rem;
+}
+.prose-chat h1 {
+  font-size: 1.125rem;
+}
+.prose-chat h2 {
+  font-size: 1rem;
+}
+.prose-chat h3,
+.prose-chat h4 {
+  font-size: 0.875rem;
+}
+.prose-chat ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prose-chat ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.prose-chat li + li {
+  margin-top: 0.25rem;
+}
+.prose-chat a {
+  color: var(--color-mint);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-chat blockquote {
+  border-left: 3px solid var(--color-line);
+  padding-left: 0.75rem;
+  color: var(--color-muted);
+}
+.prose-chat hr {
+  border-color: var(--color-line);
+}
+.prose-chat :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--color-user);
+  background: var(--color-tag);
+  border: 1px solid var(--color-line);
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.3rem;
+}

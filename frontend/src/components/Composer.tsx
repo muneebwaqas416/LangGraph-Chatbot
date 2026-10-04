@@ -61,7 +61,7 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
           </div>
         </div>
         <p className="text-center font-mono text-[11px] text-slate-400">
-          LangGraph Chatbot · Conversation memory is kept in server memory and resets when the backend restarts.
+          LangGraph Chatbot · Conversations are saved to PostgreSQL.
         </p>
       </div>
     </div>

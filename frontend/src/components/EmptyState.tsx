@@ -69,7 +69,7 @@ export function EmptyState({ backendOnline, model, temperature, checkpointer, on
           <span className="text-slate-300">•</span>
           <span className="flex items-center gap-1.5">
             <Icon name="database" className="text-[15px] text-slate-400" />
-            {checkpointer ?? 'MemorySaver'} Checkpointer
+            {checkpointer ?? 'PostgresSaver'} Checkpointer
           </span>
           <span className="text-slate-300">•</span>
           <span className="flex items-center gap-1.5">

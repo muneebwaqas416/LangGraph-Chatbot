@@ -30,24 +30,41 @@ function AssistantHeader({ badge }: { badge: ReactNode }) {
 }
 
 export function AssistantMessage({ message }: { message: ChatMessage }) {
-  const badge =
-    message.elapsedMs !== undefined ? (
+  let badge: ReactNode
+  if (message.streaming) {
+    badge = (
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-mint-border bg-mint-bg px-2 py-0.5 font-mono text-[11px] text-mint">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mint" />
+        {message.model} · streaming…
+      </div>
+    )
+  } else if (message.elapsedMs !== undefined) {
+    const firstToken =
+      message.firstTokenMs != null ? ` · first token ${formatElapsed(message.firstTokenMs)}` : ''
+    badge = (
       <div className="inline-flex items-center gap-1.5 rounded-full border border-mint-border bg-mint-bg px-2 py-0.5 font-mono text-[11px] text-mint">
         <span className="h-1.5 w-1.5 rounded-full bg-mint" />
         {message.model} · responded in {formatElapsed(message.elapsedMs)}
+        {firstToken}
       </div>
-    ) : (
+    )
+  } else {
+    badge = (
       <div className="inline-flex items-center gap-1.5 font-mono text-[11px] text-muted">
         <Icon name="history" className="text-[14px]" />
         Restored from checkpoint
       </div>
     )
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-white shadow-sm">
       <AssistantHeader badge={badge} />
       <div className="p-5">
         <Markdown content={message.content} />
+        {message.streaming && (
+          <span aria-hidden="true" className="mt-1 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-user align-middle" />
+        )}
       </div>
     </div>
   )
@@ -60,7 +77,7 @@ export function ThinkingMessage({ model }: { model: string }) {
         badge={
           <div className="inline-flex items-center gap-1.5 rounded-full border border-mint-border bg-mint-bg px-2 py-0.5 font-mono text-[11px] text-mint">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mint" />
-            Running graph on {model}…
+            Running graph on {model} · waiting for first token…
           </div>
         }
       />

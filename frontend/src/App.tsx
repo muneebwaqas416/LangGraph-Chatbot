@@ -5,12 +5,13 @@ import {
   getConfig,
   getHistory,
   listThreads,
-  retryThread,
-  sendMessage,
+  streamMessage,
+  streamRetry,
   type ChatMessage,
-  type ChatResponse,
   type RunOptions,
   type ServerConfig,
+  type StreamDone,
+  type StreamHandlers,
   type ThreadSummary,
 } from './api'
 import { Composer } from './components/Composer'
@@ -47,6 +48,8 @@ function App() {
   const bottomRef = useRef<HTMLDivElement>(null)
   // Bumped whenever the visible thread changes, so late responses for another thread are ignored.
   const viewRef = useRef(0)
+  // The in-flight stream, aborted when the user leaves the thread it belongs to.
+  const abortRef = useRef<AbortController | null>(null)
 
   const options: RunOptions = {
     model:
@@ -88,11 +91,15 @@ function App() {
   }, [backendOnline, refreshThreads])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Jump instantly while tokens stream in; smooth scrolling on every frame lags behind.
+    const streaming = messages.at(-1)?.streaming === true
+    bottomRef.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth' })
   }, [messages, loading, error])
 
   const resetView = useCallback(() => {
     viewRef.current += 1
+    abortRef.current?.abort()
+    abortRef.current = null
     setThreadId(null)
     setMessages([])
     setError(null)
@@ -119,14 +126,6 @@ function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [newChat])
 
-  function appendReply(data: ChatResponse) {
-    setThreadId(data.thread_id)
-    setMessages((prev) => [
-      ...prev,
-      { role: 'assistant', content: data.reply, model: data.model, elapsedMs: data.elapsed_ms },
-    ])
-  }
-
   function handleFailure(err: unknown) {
     const apiError = toApiError(err)
     if (apiError.threadId) setThreadId(apiError.threadId)
@@ -134,42 +133,93 @@ function App() {
     setError(apiError)
   }
 
-  async function handleSend() {
-    const text = input.trim()
-    if (!text || loading) return
-
+  /**
+   * Run one streamed graph turn: tokens grow a placeholder assistant message, `done` finalizes it,
+   * and a failure drops the partial reply (the server never checkpointed it) and shows the error card.
+   */
+  async function runStream(start: (handlers: StreamHandlers, signal: AbortSignal) => Promise<StreamDone>) {
     const view = viewRef.current
-    setMessages((prev) => [...prev, { role: 'user', content: text }])
-    setInput('')
-    setError(null)
-    setLoading(true)
+    const controller = new AbortController()
+    abortRef.current = controller
+    const current = () => view === viewRef.current
+
+    // Tokens are buffered and flushed once per frame so long replies don't re-render per token.
+    let pending = ''
+    let frame = 0
+    const flush = () => {
+      frame = 0
+      if (!pending || !current()) return
+      const text = pending
+      pending = ''
+      setMessages((prev) => {
+        const last = prev.at(-1)
+        if (last?.role === 'assistant' && last.streaming) {
+          return [...prev.slice(0, -1), { ...last, content: last.content + text }]
+        }
+        return [...prev, { role: 'assistant', content: text, model: options.model, streaming: true }]
+      })
+    }
+
     try {
-      const data = await sendMessage(text, threadId, options)
-      if (view === viewRef.current) appendReply(data)
+      const done = await start(
+        {
+          onStart: (info) => {
+            if (!current()) return
+            setThreadId(info.thread_id)
+            refreshThreads()
+          },
+          onToken: (content) => {
+            pending += content
+            if (!frame) frame = requestAnimationFrame(flush)
+          },
+        },
+        controller.signal,
+      )
+      cancelAnimationFrame(frame)
+      if (!current()) return
+      setThreadId(done.thread_id)
+      setMessages((prev) => [
+        ...prev.filter((m) => !m.streaming),
+        {
+          role: 'assistant',
+          content: done.reply,
+          model: done.model,
+          elapsedMs: done.elapsed_ms,
+          firstTokenMs: done.first_token_ms,
+        },
+      ])
     } catch (err) {
-      if (view === viewRef.current) handleFailure(err)
+      cancelAnimationFrame(frame)
+      if (!current()) return
+      setMessages((prev) => prev.filter((m) => !m.streaming))
+      handleFailure(err)
     } finally {
-      if (view === viewRef.current) setLoading(false)
+      if (abortRef.current === controller) abortRef.current = null
+      if (current()) {
+        setLoading(false)
+        setRetrying(false)
+      }
       refreshThreads()
     }
   }
 
+  async function handleSend() {
+    const text = input.trim()
+    if (!text || loading || retrying) return
+
+    setMessages((prev) => [...prev, { role: 'user', content: text }])
+    setInput('')
+    setError(null)
+    setLoading(true)
+    await runStream((handlers, signal) => streamMessage(text, threadId, options, handlers, signal))
+  }
+
   async function handleRetry() {
     if (!threadId) return
-    const view = viewRef.current
+    const id = threadId
+    setError(null)
     setRetrying(true)
-    try {
-      const data = await retryThread(threadId, options)
-      if (view === viewRef.current) {
-        setError(null)
-        appendReply(data)
-      }
-    } catch (err) {
-      if (view === viewRef.current) handleFailure(err)
-    } finally {
-      if (view === viewRef.current) setRetrying(false)
-      refreshThreads()
-    }
+    await runStream((handlers, signal) => streamRetry(id, options, handlers, signal))
   }
 
   async function selectThread(id: string) {
@@ -208,6 +258,7 @@ function App() {
   }
 
   const lastIsUser = messages.at(-1)?.role === 'user'
+  const streamingStarted = messages.at(-1)?.streaming === true
   const showEmpty = messages.length === 0 && !loading && !error
 
   return (
@@ -261,11 +312,10 @@ function App() {
                   <AssistantMessage key={i} message={m} />
                 ),
               )}
-              {(loading || retrying) && <ThinkingMessage model={options.model} />}
-              {error && !retrying && (
+              {(loading || retrying) && !streamingStarted && <ThinkingMessage model={options.model} />}
+              {error && (
                 <ErrorCard
                   error={error}
-                  retrying={retrying}
                   // A 502 means the user message is checkpointed and the graph can resume.
                   onRetry={error.status === 502 && threadId && lastIsUser ? handleRetry : null}
                   onDismiss={() => setError(null)}

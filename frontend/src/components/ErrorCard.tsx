@@ -5,7 +5,6 @@ import { Icon } from './Icon'
 
 interface ErrorCardProps {
   error: ApiError
-  retrying: boolean
   /** Only offered when the failed turn is still checkpointed on the server. */
   onRetry: (() => void) | null
   onDismiss: () => void
@@ -33,7 +32,7 @@ function describe(error: ApiError) {
   }
 }
 
-export function ErrorCard({ error, retrying, onRetry, onDismiss }: ErrorCardProps) {
+export function ErrorCard({ error, onRetry, onDismiss }: ErrorCardProps) {
   const [showDetail, setShowDetail] = useState(false)
   const [copied, setCopied] = useState(false)
   const { title, badge, summary } = describe(error)
@@ -138,11 +137,10 @@ export function ErrorCard({ error, retrying, onRetry, onDismiss }: ErrorCardProp
               <button
                 type="button"
                 onClick={onRetry}
-                disabled={retrying}
-                className="flex h-9 items-center gap-2 rounded-lg bg-navy px-4 text-[13px] font-medium text-white shadow-xs transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60"
+                className="flex h-9 items-center gap-2 rounded-lg bg-navy px-4 text-[13px] font-medium text-white shadow-xs transition-all hover:bg-slate-800 active:scale-[0.98] "
               >
-                <Icon name="refresh" className={`text-[17px] ${retrying ? 'animate-spin' : ''}`} />
-                {retrying ? 'Retrying…' : 'Retry Execution'}
+                <Icon name="refresh" className="text-[17px]" />
+                Retry Execution
               </button>
             )}
             <button

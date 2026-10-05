@@ -2,6 +2,8 @@
 
 Monorepo for a LangGraph-powered chatbot, grown out of `notebooks/ChatBot_Workflow.ipynb`.
 
+<img width="1920" height="928" alt="Screenshot 2026-10-06 at 1 56 51 AM" src="https://github.com/user-attachments/assets/0e32dfd8-2da3-48a1-86a5-acc2927ed1ea" />
+
 ```
 backend/    Flask API wrapping the LangGraph chat graph
 frontend/   React + TypeScript (Vite) chat UI
